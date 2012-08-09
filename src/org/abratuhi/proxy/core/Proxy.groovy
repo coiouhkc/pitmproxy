@@ -1,6 +1,15 @@
 package org.abratuhi.proxy.core
 
+import org.abratuhi.proxy.transformer.ITransformer
+import org.abratuhi.proxy.transformer.IdempotentTransformer;
+
 class Proxy {
+	
+	def i
+	def o
+	def h
+	def a
+	def b
 
 	public static void main(String[] args) {
 		def cli = new CliBuilder();
@@ -13,30 +22,34 @@ class Proxy {
 		}
 
 		def options = cli.parse(args);
+		
+		def proxy = new Proxy()
 
-		def i = options.i as int
-		def o = options.o as int
-		def h = options.h
-		def a = options.a
-		def b = options.b
+		proxy.i = options.i as int
+		proxy.o = options.o as int
+		proxy.h = options.h
+		proxy.a = options.a
+		proxy.b = options.b
 
-		def ss = new ServerSocket(i);
+		def ss = new ServerSocket(proxy.i);
 		while(true){
 			ss.accept(true){socket ->
 				socket.withStreams{input, output ->
-					def s = new Socket(h, o);
+					def s = new Socket(proxy.h, proxy.o);
 
 					s.withStreams {is, os ->
 
-						if(a){
-							def transformer = Class.forName(a, true, Thread.currentThread().contextClassLoader).newInstance()
+						if(proxy.a){
+							ITransformer transformer = (ITransformer) Class.forName(proxy.a, true, Thread.currentThread().contextClassLoader).newInstance()
+							transformer.setProxy(proxy)
 							transformer.process(input, os)
 						} else {
 							new IdempotentTransformer().process(input, os)
 						}
 
-						if(b) {
-							def transformer = Class.forName(b, true, Thread.currentThread().contextClassLoader).newInstance()
+						if(proxy.b) {
+							ITransformer transformer = (ITransformer) Class.forName(proxy.b, true, Thread.currentThread().contextClassLoader).newInstance()
+							transformer.setProxy(proxy)
 							transformer.process(is, output);
 						} else {
 							new IdempotentTransformer().process(is, output);
